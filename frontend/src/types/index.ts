@@ -25,10 +25,23 @@ export interface Category {
   children?: Category[];
 }
 
+export interface ProductImage {
+  id: number;
+  url: string;
+}
+
+export interface ProductSpec {
+  key: string;
+  value: string;
+}
+
 export interface Product {
   id: number;
   name: string;
+  subtitle?: string;
   description?: string;
+  images?: ProductImage[];
+  specs?: ProductSpec[];
   price: number;
   discountPrice?: number;
   imageUrl?: string;

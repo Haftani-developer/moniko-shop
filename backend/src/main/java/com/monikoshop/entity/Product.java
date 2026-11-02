@@ -2,11 +2,13 @@ package com.monikoshop.entity;
 
 import jakarta.persistence.*;
 import lombok.*;
-import com.fasterxml.jackson.annotation.JsonIgnore;
+import org.hibernate.annotations.BatchSize;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "products")
@@ -24,6 +26,10 @@ public class Product {
     @Column(nullable = false, length = 255)
     private String name;
 
+    /** Optional secondary title (e.g. English name), shown under the title like on Digikala. */
+    @Column(length = 255)
+    private String subtitle;
+
     @Column(columnDefinition = "TEXT")
     private String description;
 
@@ -33,26 +39,25 @@ public class Product {
     private BigDecimal discountPrice;
 
     /**
-     * Legacy/external image URL. For uploaded product images this contains the
-     * public API URL that serves the bytes stored in PostgreSQL.
+     * Legacy external image URL of old products. New products use {@link ProductImage}
+     * (1..5 uploaded images); this field is only a display fallback and is cleared on upload.
      */
     @Column(columnDefinition = "TEXT")
     private String imageUrl;
-
-    /** Raw image bytes stored directly in PostgreSQL BYTEA. */
-    @JsonIgnore
-    @Column(name = "image_data", columnDefinition = "BYTEA")
-    private byte[] imageData;
-
-    @JsonIgnore
-    @Column(name = "image_content_type", length = 100)
-    private String imageContentType;
 
     private String brand;
 
     @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id")
     private Category category;
+
+    /** "مشخصات" table rows, in display order. */
+    @ElementCollection(fetch = FetchType.LAZY)
+    @CollectionTable(name = "product_specs", joinColumns = @JoinColumn(name = "product_id"))
+    @OrderColumn(name = "sort_order")
+    @BatchSize(size = 50)
+    @Builder.Default
+    private List<ProductSpec> specs = new ArrayList<>();
 
     @Column(nullable = false)
     @Builder.Default

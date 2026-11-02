@@ -1,10 +1,10 @@
 package com.monikoshop.controller;
 
 import com.monikoshop.dto.CategoryTreeResponse;
+import com.monikoshop.dto.ProductResponse;
 import com.monikoshop.entity.Category;
-import com.monikoshop.entity.Product;
 import com.monikoshop.repository.CategoryRepository;
-import com.monikoshop.repository.ProductRepository;
+import com.monikoshop.service.ProductService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,18 +17,17 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class ProductController {
 
-    private final ProductRepository productRepository;
+    private final ProductService productService;
     private final CategoryRepository categoryRepository;
 
     @GetMapping("/products")
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productRepository.findByActiveTrue());
+    public ResponseEntity<List<ProductResponse>> getAllProducts() {
+        return ResponseEntity.ok(productService.listActive());
     }
 
     @GetMapping("/products/{id}")
-    public ResponseEntity<Product> getProduct(@PathVariable Long id) {
-        return productRepository.findById(id)
-                .filter(Product::isActive)
+    public ResponseEntity<ProductResponse> getProduct(@PathVariable Long id) {
+        return productService.findActive(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
     }
@@ -46,7 +45,6 @@ public class ProductController {
     @GetMapping("/categories/tree")
     public ResponseEntity<List<CategoryTreeResponse>> getCategoryTree() {
         List<Category> roots = categoryRepository.findRootCategoriesWithChildren();
-        // اگر سطح سوم هم لازم شد می‌توان دوباره fetch کرد؛ فعلاً دو سطح کافی است
         List<CategoryTreeResponse> tree = roots.stream()
                 .map(CategoryTreeResponse::from)
                 .collect(Collectors.toList());
@@ -54,9 +52,9 @@ public class ProductController {
     }
 
     @GetMapping("/categories/{slug}/products")
-    public ResponseEntity<List<Product>> getProductsByCategory(@PathVariable String slug) {
+    public ResponseEntity<List<ProductResponse>> getProductsByCategory(@PathVariable String slug) {
         return categoryRepository.findBySlug(slug)
-                .map(cat -> ResponseEntity.ok(productRepository.findByCategoryIdAndActiveTrue(cat.getId())))
+                .map(cat -> ResponseEntity.ok(productService.listActiveByCategory(cat.getId())))
                 .orElse(ResponseEntity.notFound().build());
     }
 }

@@ -5,12 +5,11 @@ import com.monikoshop.exception.ApiException;
 import com.monikoshop.dto.*;
 import com.monikoshop.dto.CategoryTreeResponse;
 import com.monikoshop.entity.Category;
-import com.monikoshop.entity.Product;
 import com.monikoshop.entity.User;
 import com.monikoshop.repository.CategoryRepository;
-import com.monikoshop.repository.ProductRepository;
 import com.monikoshop.repository.UserRepository;
 import com.monikoshop.service.OrderService;
+import com.monikoshop.service.ProductService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -29,9 +28,7 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AdminController {
 
-    private static final long MAX_IMAGE_BYTES = 5 * 1024 * 1024; // 5MB
-
-    private final ProductRepository productRepository;
+    private final ProductService productService;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final OrderService orderService;
@@ -39,13 +36,19 @@ public class AdminController {
     // ---- Products ----
 
     @GetMapping("/products")
-    public ResponseEntity<List<Product>> getAllProducts() {
-        return ResponseEntity.ok(productRepository.findAll());
+    public ResponseEntity<List<ProductResponse>> getAllProducts() {
+        return ResponseEntity.ok(productService.listAll());
     }
 
+    /**
+     * Create a product. Rules: 1..5 images are required (multipart field "images", repeated),
+     * "imageOrder" (optional) is the final order, e.g. "n1,n0".
+     * "specs" is a JSON array of {key, value} rows for the "مشخصات" table.
+     */
     @PostMapping(value = "/products", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Product> createProduct(
+    public ResponseEntity<ProductResponse> createProduct(
             @RequestParam String name,
+            @RequestParam(required = false) String subtitle,
             @RequestParam(required = false) String description,
             @RequestParam BigDecimal price,
             @RequestParam(required = false) BigDecimal discountPrice,
@@ -53,25 +56,24 @@ public class AdminController {
             @RequestParam Long categoryId,
             @RequestParam Integer stock,
             @RequestParam(required = false, defaultValue = "true") Boolean active,
-            @RequestParam(required = false) String imageUrl,
-            @RequestParam(required = false) MultipartFile image,
-            jakarta.servlet.http.HttpServletRequest httpRequest
+            @RequestParam(required = false) String specs,
+            @RequestParam(required = false) String imageOrder,
+            @RequestParam(required = false) List<MultipartFile> images
     ) {
-        Product product = new Product();
-        applyFields(product, name, description, price, discountPrice, brand, categoryId, stock, active);
-        applyImage(product, image, imageUrl, httpRequest);
-        Product saved = productRepository.save(product);
-        if (saved.getImageData() != null) {
-            saved.setImageUrl(buildImageUrl(httpRequest, saved.getId()));
-            saved = productRepository.save(saved);
-        }
-        return ResponseEntity.ok(saved);
+        ProductForm form = new ProductForm(name, subtitle, description, price, discountPrice, brand,
+                categoryId, stock, active, specs);
+        return ResponseEntity.ok(productService.create(form, images, imageOrder));
     }
 
+    /**
+     * Update a product. "imageOrder" lists the final images: "e<id>" keeps an existing image,
+     * "n<i>" is the i-th newly uploaded file; existing images that are not listed are deleted.
+     */
     @PutMapping(value = "/products/{id}", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<Product> updateProduct(
+    public ResponseEntity<ProductResponse> updateProduct(
             @PathVariable Long id,
             @RequestParam String name,
+            @RequestParam(required = false) String subtitle,
             @RequestParam(required = false) String description,
             @RequestParam BigDecimal price,
             @RequestParam(required = false) BigDecimal discountPrice,
@@ -79,123 +81,19 @@ public class AdminController {
             @RequestParam Long categoryId,
             @RequestParam Integer stock,
             @RequestParam(required = false, defaultValue = "true") Boolean active,
-            @RequestParam(required = false) String imageUrl,
-            @RequestParam(required = false) MultipartFile image,
-            jakarta.servlet.http.HttpServletRequest httpRequest
+            @RequestParam(required = false) String specs,
+            @RequestParam(required = false) String imageOrder,
+            @RequestParam(required = false) List<MultipartFile> images
     ) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> new ApiException("محصول یافت نشد"));
-        applyFields(product, name, description, price, discountPrice, brand, categoryId, stock, active);
-        applyImage(product, image, imageUrl, httpRequest);
-        Product saved = productRepository.save(product);
-        if (saved.getImageData() != null) {
-            saved.setImageUrl(buildImageUrl(httpRequest, saved.getId()));
-            saved = productRepository.save(saved);
-        }
-        return ResponseEntity.ok(saved);
+        ProductForm form = new ProductForm(name, subtitle, description, price, discountPrice, brand,
+                categoryId, stock, active, specs);
+        return ResponseEntity.ok(productService.update(id, form, images, imageOrder));
     }
 
     @DeleteMapping("/products/{id}")
     public ResponseEntity<MessageResponse> deleteProduct(@PathVariable Long id) {
-        if (!productRepository.existsById(id)) {
-            throw new ApiException("محصول یافت نشد");
-        }
-        productRepository.deleteById(id);
+        productService.delete(id);
         return ResponseEntity.ok(new MessageResponse("محصول حذف شد"));
-    }
-
-    private void applyFields(
-            Product product,
-            String name,
-            String description,
-            BigDecimal price,
-            BigDecimal discountPrice,
-            String brand,
-            Long categoryId,
-            Integer stock,
-            Boolean active
-    ) {
-        if (name == null || name.isBlank() || name.length() > 255) {
-            throw new ApiException("نام محصول الزامی است و نباید بیش از ۲۵۵ کاراکتر باشد");
-        }
-        if (description != null && description.length() > 10000) {
-            throw new ApiException("توضیحات بیش از حد طولانی است");
-        }
-        if (brand != null && brand.length() > 255) {
-            throw new ApiException("نام برند بیش از حد طولانی است");
-        }
-        if (price == null || price.signum() <= 0 || price.compareTo(new BigDecimal("999999999999")) > 0) {
-            throw new ApiException("قیمت نامعتبر است");
-        }
-        if (discountPrice != null && (discountPrice.signum() < 0 || discountPrice.compareTo(price) > 0)) {
-            throw new ApiException("قیمت با تخفیف نامعتبر است");
-        }
-        if (stock == null || stock < 0 || stock > 1_000_000) {
-            throw new ApiException("موجودی نامعتبر است");
-        }
-        product.setName(name.trim());
-        product.setDescription(description);
-        product.setPrice(price);
-        product.setDiscountPrice(discountPrice);
-        product.setBrand(brand);
-        product.setStock(stock);
-        product.setActive(active != null ? active : true);
-        Category category = categoryRepository.findById(categoryId)
-                .orElseThrow(() -> new ApiException("دسته‌بندی یافت نشد"));
-        product.setCategory(category);
-    }
-
-    private void applyImage(Product product, MultipartFile image, String imageUrl,
-                            jakarta.servlet.http.HttpServletRequest request) {
-        if (image != null && !image.isEmpty()) {
-            if (image.getSize() > MAX_IMAGE_BYTES) {
-                throw new ApiException("حجم تصویر نباید بیشتر از ۵ مگابایت باشد");
-            }
-            byte[] bytes;
-            try {
-                bytes = image.getBytes();
-            } catch (java.io.IOException e) {
-                throw new ApiException("خطا در خواندن تصویر");
-            }
-            // The real file content decides the type; the client-supplied Content-Type is never trusted.
-            String detectedType = detectImageType(bytes);
-            if (detectedType == null) {
-                throw new ApiException("فقط فایل‌های تصویری معتبر مجاز هستند (jpg, png, gif, webp, bmp)");
-            }
-            product.setImageData(bytes);
-            product.setImageContentType(detectedType);
-            product.setImageUrl(buildImageUrl(request, product.getId()));
-            return;
-        }
-
-        if (imageUrl != null) {
-            product.setImageUrl(sanitizeImageUrl(imageUrl));
-            product.setImageData(null);
-            product.setImageContentType(null);
-        }
-    }
-
-    private static String detectImageType(byte[] b) {
-        if (b == null || b.length < 12) {
-            return null;
-        }
-        if ((b[0] & 0xFF) == 0xFF && (b[1] & 0xFF) == 0xD8 && (b[2] & 0xFF) == 0xFF) {
-            return "image/jpeg";
-        }
-        if ((b[0] & 0xFF) == 0x89 && b[1] == 'P' && b[2] == 'N' && b[3] == 'G') {
-            return "image/png";
-        }
-        if (b[0] == 'G' && b[1] == 'I' && b[2] == 'F' && b[3] == '8') {
-            return "image/gif";
-        }
-        if (b[0] == 'R' && b[1] == 'I' && b[2] == 'F' && b[3] == 'F'
-                && b[8] == 'W' && b[9] == 'E' && b[10] == 'B' && b[11] == 'P') {
-            return "image/webp";
-        }
-        if (b[0] == 'B' && b[1] == 'M') {
-            return "image/bmp";
-        }
-        return null;
     }
 
     /** Only http(s) URLs or site-relative paths are accepted (blocks javascript:, data:, file: ...). */
@@ -212,11 +110,6 @@ public class AdminController {
             return u;
         }
         throw new ApiException("آدرس تصویر باید با http:// یا https:// شروع شود");
-    }
-
-    private String buildImageUrl(jakarta.servlet.http.HttpServletRequest request, Long productId) {
-        // مسیر نسبی ذخیره می‌شود؛ فرانت آدرس بک‌اند را (از VITE_API_URL) به آن اضافه می‌کند
-        return "/api/products/" + (productId == null ? "" : productId) + "/image";
     }
 
     // ---- Categories (hierarchical) ----

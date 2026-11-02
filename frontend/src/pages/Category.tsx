@@ -44,7 +44,11 @@ export default function Category() {
         <div className="products-grid">
           {products.map((product) => (
             <Link to={`/products/${product.id}`} key={product.id} className="product-card">
-              <img src={product.imageUrl || 'https://via.placeholder.com/300'} alt={product.name} />
+              <img
+                src={product.imageUrl ? getProductImageUrl(product.imageUrl) : FALLBACK_IMAGE}
+                alt={product.name}
+                onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
+              />
               <div className="product-info">
                 <div className="product-brand">{product.brand}</div>
                 <div className="product-name">{product.name}</div>

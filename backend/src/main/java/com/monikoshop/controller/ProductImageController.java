@@ -1,9 +1,7 @@
 package com.monikoshop.controller;
 
-
-import com.monikoshop.exception.ApiException;
-import com.monikoshop.entity.Product;
-import com.monikoshop.repository.ProductRepository;
+import com.monikoshop.entity.ProductImage;
+import com.monikoshop.repository.ProductImageRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.CacheControl;
 import org.springframework.http.MediaType;
@@ -20,28 +18,33 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class ProductImageController {
 
-    private final ProductRepository productRepository;
+    private final ProductImageRepository imageRepository;
 
+    /** A specific image. The id never points to different bytes, so it can be cached for a long time. */
+    @GetMapping("/{id}/images/{imageId}")
+    public ResponseEntity<byte[]> getImage(@PathVariable Long id, @PathVariable Long imageId) {
+        return imageRepository.findByIdAndProductId(imageId, id)
+                .map(image -> respond(image, CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic().immutable()))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
+
+    /** Main image of the product (kept for old links such as /api/products/{id}/image). */
     @GetMapping("/{id}/image")
-    public ResponseEntity<byte[]> getProductImage(@PathVariable Long id) {
-        Product product = productRepository.findById(id)
-                .orElseThrow(() -> ApiException.notFound("محصول یافت نشد"));
+    public ResponseEntity<byte[]> getMainImage(@PathVariable Long id) {
+        return imageRepository.findFirstByProductIdOrderBySortOrderAscIdAsc(id)
+                .map(image -> respond(image, CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic()))
+                .orElseGet(() -> ResponseEntity.notFound().build());
+    }
 
-        if (product.getImageData() == null || product.getImageData().length == 0) {
-            return ResponseEntity.notFound().build();
-        }
-
-        MediaType mediaType = MediaType.APPLICATION_OCTET_STREAM;
-        if (product.getImageContentType() != null) {
-            try {
-                mediaType = MediaType.parseMediaType(product.getImageContentType());
-            } catch (Exception ignored) { }
-        }
-
+    private static ResponseEntity<byte[]> respond(ProductImage image, CacheControl cache) {
+        MediaType type = MediaType.APPLICATION_OCTET_STREAM;
+        try {
+            type = MediaType.parseMediaType(image.getContentType());
+        } catch (Exception ignored) { }
         return ResponseEntity.ok()
-                .contentType(mediaType)
+                .contentType(type)
                 .header("X-Content-Type-Options", "nosniff")
-                .cacheControl(CacheControl.maxAge(1, TimeUnit.HOURS).cachePublic())
-                .body(product.getImageData());
+                .cacheControl(cache)
+                .body(image.getData());
     }
 }
