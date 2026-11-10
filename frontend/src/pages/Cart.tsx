@@ -43,7 +43,11 @@ export default function Cart() {
       <div className="cart-list">
         {items.map((item) => (
           <div className="cart-item" key={item.productId}>
-            <img src={getProductImageUrl(item.imageUrl, item.productId) || FALLBACK_IMAGE} alt={item.name} />
+            <img
+              src={getProductImageUrl(item.imageUrl, item.productId) || FALLBACK_IMAGE}
+              alt={item.name}
+              onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
+            />
             <div className="cart-item-info">
               <div className="product-name">{item.name}</div>
               <div className="price">{formatPrice(item.price)}</div>

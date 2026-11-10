@@ -56,11 +56,10 @@ export default function Home() {
                             className="category-card"
                         >
                             <img
-                                src={cat.imageUrl || 'https://via.placeholder.com/80'}
+                                src={cat.imageUrl || FALLBACK_IMAGE}
                                 alt={cat.name}
                                 onError={(event) => {
-                                    event.currentTarget.src =
-                                        'https://via.placeholder.com/80';
+                                    event.currentTarget.src = FALLBACK_IMAGE;
                                 }}
                             />
 

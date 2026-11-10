@@ -4,7 +4,9 @@ COPY package*.json ./
 RUN npm ci
 COPY . .
 # آدرس API هنگام build داخل کد قرار می‌گیرد (پیش‌فرض: .env.production)
-ARG VITE_API_URL
+# اگر هنگام build مقدار داده نشود (مثل رانفلر) همین پیش‌فرض استفاده می‌شود؛
+# docker-compose محلی مقدار /api را خودش می‌دهد.
+ARG VITE_API_URL=https://api.moniko.ir/api
 ENV VITE_API_URL=$VITE_API_URL
 RUN npm run build
 
