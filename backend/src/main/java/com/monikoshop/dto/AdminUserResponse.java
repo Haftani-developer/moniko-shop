@@ -5,6 +5,7 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Set;
 
@@ -20,4 +21,5 @@ public class AdminUserResponse {
     private Set<String> roles;
     private boolean enabled;
     private LocalDateTime createdAt;
+    private Instant lastLoginAt;
 }

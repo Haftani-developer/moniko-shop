@@ -17,6 +17,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -46,6 +47,7 @@ public class AuthService {
                 .phone(request.getPhone())
                 .roles(Set.of(Role.ROLE_USER))
                 .enabled(true)
+                .lastLoginAt(Instant.now())
                 .build();
 
         user = userRepository.save(user);
@@ -68,6 +70,7 @@ public class AuthService {
                 .build();
     }
 
+    @Transactional
     public AuthResponse login(LoginRequest request) {
         if (request.getPassword().getBytes(java.nio.charset.StandardCharsets.UTF_8).length > 72) {
             throw new org.springframework.security.authentication.BadCredentialsException("invalid credentials");
@@ -85,6 +88,9 @@ public class AuthService {
         User user = userRepository.findByEmail(userDetails.getUsername())
                 .orElseThrow(() -> new ApiException("کاربر یافت نشد"));
 
+        // ثبت زمان آخرین ورود موفق
+        user.setLastLoginAt(Instant.now());
+        userRepository.save(user);
 
         String token = jwtUtil.generateToken(userDetails, user.getPassword());
 

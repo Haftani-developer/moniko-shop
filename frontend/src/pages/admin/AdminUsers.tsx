@@ -2,6 +2,14 @@ import { useEffect, useState } from 'react';
 import { adminApi } from '../../services/api';
 import { AdminUser } from '../../types';
 
+const formatLastLogin = (iso?: string | null) => {
+  if (!iso) return 'هنوز وارد نشده';
+  const d = new Date(iso);
+  const date = d.toLocaleDateString('fa-IR', { year: 'numeric', month: 'long', day: 'numeric' });
+  const time = d.toLocaleTimeString('fa-IR', { hour: '2-digit', minute: '2-digit' });
+  return `${date} - ${time}`;
+};
+
 export default function AdminUsers() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [loading, setLoading] = useState(true);
@@ -41,7 +49,7 @@ export default function AdminUsers() {
       <h2 className="section-title">کاربران</h2>
       {error && <div className="error-msg">{error}</div>}
       <table className="admin-table">
-        <thead><tr><th>نام</th><th>ایمیل</th><th>نقش</th><th>وضعیت</th><th></th></tr></thead>
+        <thead><tr><th>نام</th><th>ایمیل</th><th>نقش</th><th>وضعیت</th><th>آخرین ورود</th><th></th></tr></thead>
         <tbody>
           {users.map((u) => (
             <tr key={u.id}>
@@ -49,6 +57,7 @@ export default function AdminUsers() {
               <td>{u.email}</td>
               <td>{u.roles.includes('ROLE_ADMIN') ? 'مدیر' : 'کاربر'}</td>
               <td>{u.enabled ? 'فعال' : 'غیرفعال'}</td>
+              <td>{formatLastLogin(u.lastLoginAt)}</td>
               <td>
                 <button className="link-btn" onClick={() => toggleAdmin(u)}>
                   {u.roles.includes('ROLE_ADMIN') ? 'حذف دسترسی مدیر' : 'ارتقا به مدیر'}

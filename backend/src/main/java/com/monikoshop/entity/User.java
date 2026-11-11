@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
@@ -51,4 +52,8 @@ public class User {
 
     @UpdateTimestamp
     private LocalDateTime updatedAt;
+
+    /** آخرین زمان ورود موفق کاربر (UTC). null یعنی هنوز وارد نشده. */
+    @Column(name = "last_login_at")
+    private Instant lastLoginAt;
 }

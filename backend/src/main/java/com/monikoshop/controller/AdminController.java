@@ -265,6 +265,7 @@ public class AdminController {
                 .roles(user.getRoles().stream().map(Enum::name).collect(Collectors.toSet()))
                 .enabled(user.isEnabled())
                 .createdAt(user.getCreatedAt())
+                .lastLoginAt(user.getLastLoginAt())
                 .build();
     }
 }

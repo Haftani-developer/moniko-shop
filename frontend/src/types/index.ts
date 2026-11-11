@@ -90,4 +90,5 @@ export interface AdminUser {
   roles: string[];
   enabled: boolean;
   createdAt: string;
+  lastLoginAt?: string | null;
 }
