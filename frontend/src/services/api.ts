@@ -44,6 +44,10 @@ export const productApi = {
   getByCategory: (slug: string) => api.get(`/categories/${slug}/products`),
 };
 
+export const homeApi = {
+  get: () => api.get('/home'),
+};
+
 export const orderApi = {
   create: (data: { items: { productId: number; quantity: number }[]; shippingAddress: string; phone: string }) =>
     api.post('/orders', data),
@@ -68,6 +72,20 @@ export const adminApi = {
   // Orders
   getOrders: () => api.get('/admin/orders'),
   updateOrderStatus: (id: number, status: string) => api.patch(`/admin/orders/${id}/status`, { status }),
+  // Storefront (banners / brands / settings / home products)
+  getBanners: () => api.get('/admin/banners'),
+  saveBanner: (id: number | null, fd: FormData) =>
+    id ? api.put(`/admin/banners/${id}`, fd) : api.post('/admin/banners', fd),
+  deleteBanner: (id: number) => api.delete(`/admin/banners/${id}`),
+  getBrands: () => api.get('/admin/brands'),
+  saveBrand: (id: number | null, fd: FormData) =>
+    id ? api.put(`/admin/brands/${id}`, fd) : api.post('/admin/brands', fd),
+  deleteBrand: (id: number) => api.delete(`/admin/brands/${id}`),
+  getSettings: () => api.get('/admin/settings'),
+  saveSettings: (data: Record<string, string>) => api.put('/admin/settings', data),
+  getHomeProducts: (type: 'daily-deal' | 'featured') => api.get(`/admin/home-products/${type}`),
+  saveHomeProducts: (type: 'daily-deal' | 'featured', items: { productId: number; endsAt?: string | null }[]) =>
+    api.put(`/admin/home-products/${type}`, { items }),
   // Visits
   getVisits: () => api.get('/admin/visits'),
   // Users

@@ -2,15 +2,19 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { productApi } from '../services/api';
 import { Product } from '../types';
-import { getProductImageUrl, FALLBACK_IMAGE } from '../utils/imageUrl';
+import ProductCard from '../components/ProductCard';
 
-const formatPrice = (price: number) => new Intl.NumberFormat('fa-IR').format(price) + ' تومان';
+type Sort = 'new' | 'cheap' | 'expensive' | 'discount';
+
+const effective = (p: Product) => p.discountPrice || p.price;
 
 export default function Category() {
   const { slug } = useParams<{ slug: string }>();
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
+  const [sort, setSort] = useState<Sort>('new');
+  const [onlyStock, setOnlyStock] = useState(false);
 
   useEffect(() => {
     if (!slug) return;
@@ -18,9 +22,7 @@ export default function Category() {
     setNotFound(false);
     productApi.getByCategory(slug)
       .then((res) => setProducts(res.data))
-      .catch((err) => {
-        if (err.response?.status === 404) setNotFound(true);
-      })
+      .catch((err) => { if (err.response?.status === 404) setNotFound(true); })
       .finally(() => setLoading(false));
   }, [slug]);
 
@@ -28,47 +30,45 @@ export default function Category() {
 
   if (notFound) {
     return (
-      <div className="container">
+      <div className="kh-container kh-section">
         <p>دسته‌بندی مورد نظر یافت نشد.</p>
         <Link to="/">بازگشت به صفحه اصلی</Link>
       </div>
     );
   }
 
+  const list = products
+    .filter((p) => !onlyStock || p.stock > 0)
+    .sort((a, b) => {
+      switch (sort) {
+        case 'cheap': return effective(a) - effective(b);
+        case 'expensive': return effective(b) - effective(a);
+        case 'discount': return (b.discountPrice ? 1 - b.discountPrice / b.price : 0) - (a.discountPrice ? 1 - a.discountPrice / a.price : 0);
+        default: return b.id - a.id;
+      }
+    });
+
   return (
-    <div className="container">
-      <h2 className="section-title">محصولات</h2>
-      {products.length === 0 ? (
-        <p>محصولی در این دسته‌بندی یافت نشد.</p>
-      ) : (
-        <div className="products-grid">
-          {products.map((product) => (
-            <Link to={`/products/${product.id}`} key={product.id} className="product-card">
-              <img
-                src={product.imageUrl ? getProductImageUrl(product.imageUrl) : FALLBACK_IMAGE}
-                alt={product.name}
-                onError={(e) => { e.currentTarget.src = FALLBACK_IMAGE; }}
-              />
-              <div className="product-info">
-                <div className="product-brand">{product.brand}</div>
-                <div className="product-name">{product.name}</div>
-                <div className="product-price">
-                  {product.discountPrice ? (
-                    <>
-                      <span className="price">{formatPrice(product.discountPrice)}</span>
-                      <span className="old-price">{formatPrice(product.price)}</span>
-                      <span className="discount-badge">
-                        {Math.round((1 - product.discountPrice / product.price) * 100)}٪
-                      </span>
-                    </>
-                  ) : (
-                    <span className="price">{formatPrice(product.price)}</span>
-                  )}
-                </div>
-              </div>
-            </Link>
-          ))}
+    <div className="kh-container kh-section">
+      <nav className="kh-breadcrumb"><Link to="/">خانه</Link> ‹ <span>محصولات دسته‌بندی</span></nav>
+      <div className="kh-listing-bar">
+        <h2 className="kh-title">محصولات</h2>
+        <div className="kh-listing-tools">
+          <label className="kh-check">
+            <input type="checkbox" checked={onlyStock} onChange={(e) => setOnlyStock(e.target.checked)} /> فقط کالاهای موجود
+          </label>
+          <select value={sort} onChange={(e) => setSort(e.target.value as Sort)} aria-label="مرتب‌سازی">
+            <option value="new">جدیدترین</option>
+            <option value="discount">بیشترین تخفیف</option>
+            <option value="cheap">ارزان‌ترین</option>
+            <option value="expensive">گران‌ترین</option>
+          </select>
         </div>
+      </div>
+      {list.length === 0 ? (
+        <p className="kh-muted">محصولی در این دسته‌بندی یافت نشد.</p>
+      ) : (
+        <div className="kh-grid">{list.map((p) => <ProductCard key={p.id} product={p} />)}</div>
       )}
     </div>
   );

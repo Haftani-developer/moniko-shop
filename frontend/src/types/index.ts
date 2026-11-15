@@ -105,3 +105,36 @@ export interface VisitStats {
   today: VisitDay;
   history: VisitDay[];
 }
+
+export interface Banner {
+  id: number;
+  position: 'HERO' | 'MID1' | 'MID2';
+  title?: string;
+  linkUrl?: string;
+  imageUrl: string;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface Brand {
+  id: number;
+  name: string;
+  linkUrl?: string;
+  imageUrl: string;
+  sortOrder: number;
+  active: boolean;
+}
+
+export interface HomeData {
+  banners: Banner[];
+  brands: Brand[];
+  settings: Record<string, string>;
+  dailyDeal: { endsAt?: string | null; products: Product[] };
+  featured: Product[];
+}
+
+export interface HomeProductItem {
+  productId: number;
+  productName: string;
+  endsAt?: string | null;
+}
