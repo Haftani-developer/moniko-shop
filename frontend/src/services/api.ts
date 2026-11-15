@@ -68,6 +68,8 @@ export const adminApi = {
   // Orders
   getOrders: () => api.get('/admin/orders'),
   updateOrderStatus: (id: number, status: string) => api.patch(`/admin/orders/${id}/status`, { status }),
+  // Visits
+  getVisits: () => api.get('/admin/visits'),
   // Users
   getUsers: () => api.get('/admin/users'),
   updateUserStatus: (id: number, enabled: boolean) => api.patch(`/admin/users/${id}/status`, { enabled }),

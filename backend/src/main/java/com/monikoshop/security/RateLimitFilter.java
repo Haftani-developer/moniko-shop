@@ -31,6 +31,11 @@ public class RateLimitFilter extends OncePerRequestFilter {
     // value = {count, windowStart}
     private final ConcurrentHashMap<String, long[]> loginFailures = new ConcurrentHashMap<>();
     private final ConcurrentHashMap<String, long[]> registrations = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<String, long[]> trackHits = new ConcurrentHashMap<>();
+
+    private static final long TRACK_WINDOW_MS = 60 * 1000L;
+    /** heartbeat هر ~۲۰ ثانیه است؛ سقف سخاوتمندانه چون چند نفر ممکن است پشت یک IP باشند. */
+    private static final long TRACK_MAX_PER_MIN = 300;
 
     @Override
     protected void doFilterInternal(
@@ -45,6 +50,17 @@ public class RateLimitFilter extends OncePerRequestFilter {
         }
 
         String path = request.getRequestURI();
+
+        if ("/api/track/heartbeat".equals(path)) {
+            String ip = clientIp(request);
+            if (isLimited(trackHits, ip, TRACK_WINDOW_MS, TRACK_MAX_PER_MIN)) {
+                response.setStatus(429);
+                return;
+            }
+            hit(trackHits, ip, TRACK_WINDOW_MS);
+            filterChain.doFilter(request, response);
+            return;
+        }
 
         if ("/api/auth/login".equals(path)) {
             String ip = clientIp(request);

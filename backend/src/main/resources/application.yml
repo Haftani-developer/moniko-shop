@@ -40,6 +40,10 @@ spring:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
 
+tracking:
+  # مرز «روز» برای آمار بازدید
+  zone: ${TRACKING_ZONE:Asia/Tehran}
+
 jwt:
   # JWT_SECRET is required in production (>= 32 random chars). If missing, a random temporary secret is used.
   secret: ${JWT_SECRET:}

@@ -10,6 +10,7 @@ export default function AdminLayout() {
           <NavLink to="/admin/categories" className={({ isActive }) => (isActive ? 'active' : '')}>دسته‌بندی‌ها</NavLink>
           <NavLink to="/admin/orders" className={({ isActive }) => (isActive ? 'active' : '')}>سفارش‌ها</NavLink>
           <NavLink to="/admin/users" className={({ isActive }) => (isActive ? 'active' : '')}>کاربران</NavLink>
+          <NavLink to="/admin/visits" className={({ isActive }) => (isActive ? 'active' : '')}>آمار بازدید</NavLink>
         </nav>
       </aside>
       <div className="admin-content">

@@ -62,6 +62,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(HttpMethod.POST, "/api/auth/login", "/api/auth/register",
                                 "/api/auth/forgot-password", "/api/auth/reset-password").permitAll()
+                        .requestMatchers(HttpMethod.POST, "/api/track/heartbeat").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()

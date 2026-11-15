@@ -92,3 +92,16 @@ export interface AdminUser {
   createdAt: string;
   lastLoginAt?: string | null;
 }
+
+export interface VisitDay {
+  date: string;
+  total: number;
+  users: number;
+  guests: number;
+}
+
+export interface VisitStats {
+  online: { total: number; users: number; guests: number };
+  today: VisitDay;
+  history: VisitDay[];
+}
