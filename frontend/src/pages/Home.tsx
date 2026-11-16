@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { productApi } from '../services/api';
 import { Category, Product } from '../types';
@@ -56,6 +56,8 @@ export default function Home() {
     'تمامی کالاها با تضمین اصالت و ارسال سریع به سراسر کشور عرضه می‌شوند.'
   );
   const [aboutOpen, setAboutOpen] = useState(false);
+  const [aboutClipped, setAboutClipped] = useState(false);
+  const aboutRef = useRef<HTMLParagraphElement>(null);
 
   useEffect(() => {
     Promise.all([productApi.getCategoryTree(), productApi.getAll()])
@@ -98,6 +100,16 @@ export default function Home() {
       { key: 'stock', label: 'موجود در انبار', products: inStock },
     ];
   }, [products]);
+
+  // دکمه‌ی «مشاهده بیشتر» فقط وقتی متن واقعاً بریده شده باشد لازم است
+  useEffect(() => {
+    const el = aboutRef.current;
+    if (!el || aboutOpen) return;
+    const check = () => setAboutClipped(el.scrollHeight > el.clientHeight + 2);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, [aboutText, loading, aboutOpen]);
 
   if (loading) return <div className="loading">در حال بارگذاری...</div>;
 
@@ -171,8 +183,10 @@ export default function Home() {
       {/* متن معرفی (سئو) */}
       <section className="kh-container kh-about">
         <h3>{aboutTitle}</h3>
-        <p className={aboutOpen ? 'open' : ''}>{aboutText}</p>
-        <button type="button" onClick={() => setAboutOpen((v) => !v)}>{aboutOpen ? 'بستن' : 'مشاهده بیشتر'} ‹</button>
+        <p ref={aboutRef} className={aboutOpen ? 'open' : ''}>{aboutText}</p>
+        {(aboutClipped || aboutOpen) && (
+          <button type="button" onClick={() => setAboutOpen((v) => !v)}>{aboutOpen ? 'بستن' : 'مشاهده بیشتر'}</button>
+        )}
       </section>
     </div>
   );

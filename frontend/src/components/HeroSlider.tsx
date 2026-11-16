@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Banner } from '../types';
 import { getProductImageUrl } from '../utils/imageUrl';
 import SmartLink from './SmartLink';
+import { Chevron } from './Carousel';
 
 /** اسلایدر اصلی با پخش خودکار، نقطه‌های پایین و دکمه‌های کناری. */
 export default function HeroSlider({ banners }: { banners: Banner[] }) {
@@ -30,8 +31,8 @@ export default function HeroSlider({ banners }: { banners: Banner[] }) {
       </div>
       {n > 1 && (
         <>
-          <button type="button" className="kh-arrow kh-arrow-prev" aria-label="قبلی" onClick={() => go(-1)}>›</button>
-          <button type="button" className="kh-arrow kh-arrow-next" aria-label="بعدی" onClick={() => go(1)}>‹</button>
+          <button type="button" className="kh-arrow kh-arrow-prev" aria-label="قبلی" onClick={() => go(-1)}><Chevron dir="right" /></button>
+          <button type="button" className="kh-arrow kh-arrow-next" aria-label="بعدی" onClick={() => go(1)}><Chevron dir="left" /></button>
           <div className="kh-dots">
             {banners.map((b, idx) => (
               <button key={b.id} type="button" aria-label={`اسلاید ${idx + 1}`}

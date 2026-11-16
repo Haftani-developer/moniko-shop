@@ -104,7 +104,8 @@ body { color: var(--kh-text); background: #fff; }
 .kh-dots button.active { width: 22px; background: var(--kh-pink); }
 
 .kh-carousel { position: relative; }
-.kh-carousel-track { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x proximity; scrollbar-width: none; padding: 2px; }
+.kh-carousel-track { display: flex; gap: 12px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+@media (hover: none) { .kh-carousel-track { scroll-snap-type: x proximity; } }
 .kh-carousel-track::-webkit-scrollbar { display: none; }
 .kh-carousel-track > * { scroll-snap-align: start; flex: 0 0 auto; }
 .kh-cats .kh-carousel-track { gap: 8px; }
@@ -118,7 +119,12 @@ body { color: var(--kh-text); background: #fff; }
 .kh-cat:hover .kh-cat-circle { transform: translateY(-3px); border-color: var(--kh-pink); }
 .kh-cat-name { font-size: 13px; }
 
-.kh-banner-row .kh-banner { width: calc(50% - 6px); aspect-ratio: 8 / 3; border-radius: 12px; overflow: hidden; display: block; background: var(--kh-pink-50); }
+.kh-banner { aspect-ratio: 8 / 3; border-radius: 12px; overflow: hidden; display: block; background: var(--kh-pink-50); border: 1px solid var(--kh-border); }
+.kh-banner-row .kh-banner { width: calc(50% - 8px); }
+.kh-banner-grid { display: grid; gap: 20px; }
+.kh-banner-grid.cols-2 { grid-template-columns: 1fr 1fr; }
+.kh-banner-grid.cols-1 { grid-template-columns: 1fr; }
+.kh-banner-grid.cols-1 .kh-banner { aspect-ratio: 16 / 3.6; }
 .kh-banner img { width: 100%; height: 100%; object-fit: cover; display: block; }
 
 /* کارت محصول */
@@ -158,7 +164,7 @@ body { color: var(--kh-text); background: #fff; }
 
 .kh-about { padding-top: 28px; padding-bottom: 36px; }
 .kh-about h3 { font-size: 14px; color: #737373; margin-bottom: 8px; }
-.kh-about p { font-size: 13px; line-height: 2.1; color: #a3a3a3; max-height: 4.2em; overflow: hidden; transition: max-height .3s; }
+.kh-about p { font-size: 13px; line-height: 2.1; color: #a3a3a3; max-height: 6.3em; overflow: hidden; transition: max-height .3s; }
 .kh-about p.open { max-height: 80em; }
 .kh-about button { background: none; border: none; color: var(--kh-pink); font-weight: 700; font-size: 13px; padding: 8px 0; }
 
@@ -219,6 +225,10 @@ body { color: var(--kh-text); background: #fff; }
   .kh-arrow { display: none; }
   .kh-hero-slide { aspect-ratio: 2 / 1; }
   .kh-banner-row .kh-banner { width: 86%; }
+  .kh-banner-grid { gap: 10px; }
+  .kh-banner-grid.cols-2 { grid-template-columns: 1fr; }
+  .kh-banner-grid.cols-1 .kh-banner { aspect-ratio: 8 / 3; }
+  .kh-header { position: static; }
   .kh-card { width: 160px; padding: 8px; } .kh-card-name { font-size: 12.5px; height: 42px; } .kh-now { font-size: 13.5px; }
   .kh-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
   .kh-deal { flex-direction: column; align-items: stretch; padding: 12px; }
@@ -235,3 +245,20 @@ body { color: var(--kh-text); background: #fff; }
   .kh-bottom-nav a.active { color: var(--kh-pink); font-weight: 700; }
   .kh-bottom-nav .kh-cart-badge { position: static; margin-right: 6px; }
 }
+
+/* ---------- Admin on mobile: منوی کناری به نوار افقی تبدیل می‌شود ---------- */
+@media (max-width: 800px) {
+  .admin-layout { gap: 12px; padding: 12px 0 24px; }
+  .admin-layout { grid-template-columns: minmax(0, 1fr); }
+  .admin-sidebar { position: static; padding: 8px; border-radius: 10px; min-width: 0; }
+  .admin-sidebar h3 { display: none; }
+  .admin-sidebar nav { flex-direction: row; overflow-x: auto; gap: 6px; scrollbar-width: none; }
+  .admin-sidebar nav::-webkit-scrollbar { display: none; }
+  .admin-sidebar nav a { white-space: nowrap; flex: 0 0 auto; padding: 8px 12px; background: #f5f5f5; }
+  .admin-nav-sep { display: none; }
+  .admin-table { display: block; overflow-x: auto; white-space: nowrap; }
+  .admin-form { padding: 14px; }
+}
+
+.admin-header-row { flex-wrap: wrap; gap: 8px; }
+.admin-header-row .btn-primary { width: auto; flex: 0 0 auto; }
