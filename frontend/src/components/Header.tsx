@@ -34,6 +34,11 @@ export default function Header() {
       .catch((err) => console.error('خطا در دریافت دسته‌بندی‌ها:', err));
   }, []);
 
+  // کادر جستجو با عبارت جستجوشده در آدرس هم‌گام باشد (و بیرون از صفحه‌ی جستجو خالی شود)
+  useEffect(() => {
+    setQ(location.pathname === '/search' ? new URLSearchParams(location.search).get('q') || '' : '');
+  }, [location.pathname, location.search]);
+
   // با تغییر صفحه همه منوها بسته شوند
   useEffect(() => {
     setMegaOpen(false); setDrawer(false); setUserMenu(false);
@@ -45,7 +50,7 @@ export default function Header() {
   const onSearch = (e: FormEvent) => {
     e.preventDefault();
     const v = q.trim();
-    if (v) navigate(`/search?q=${encodeURIComponent(v)}`);
+    navigate(v ? `/search?q=${encodeURIComponent(v)}` : '/search');
   };
 
   const current = categories.find((c) => c.id === activeCat) || categories[0];
