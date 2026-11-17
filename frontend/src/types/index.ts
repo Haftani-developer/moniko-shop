@@ -51,6 +51,17 @@ export interface Product {
   active: boolean;
 }
 
+/** یک صفحه از نتایج جستجو/لیست محصولات (page از ۰ شروع می‌شود) */
+export interface PagedProducts {
+  items: Product[];
+  page: number;
+  size: number;
+  totalItems: number;
+  totalPages: number;
+  /** فقط وقتی لیست روی یک دسته فیلتر شده */
+  categoryName?: string | null;
+}
+
 export interface CartItem {
   productId: number;
   name: string;

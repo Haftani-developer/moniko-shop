@@ -1,6 +1,7 @@
 package com.monikoshop.controller;
 
 import com.monikoshop.dto.CategoryTreeResponse;
+import com.monikoshop.dto.PagedProducts;
 import com.monikoshop.dto.ProductResponse;
 import com.monikoshop.entity.Category;
 import com.monikoshop.repository.CategoryRepository;
@@ -10,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @RestController
@@ -23,6 +25,31 @@ public class ProductController {
     @GetMapping("/products")
     public ResponseEntity<List<ProductResponse>> getAllProducts() {
         return ResponseEntity.ok(productService.listActive());
+    }
+
+    /**
+     * جستجو + صفحه‌بندی + مرتب‌سازی سمت سرور.
+     * مثال: /api/products/search?q=کرم+۵۰&category=skin-care&sort=cheap&inStock=true&page=0&size=24
+     * sort: relevance (پیش‌فرض با q) | new (پیش‌فرض بدون q) | cheap | expensive | discount
+     */
+    @GetMapping("/products/search")
+    public ResponseEntity<PagedProducts> searchProducts(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "false") boolean inStock,
+            @RequestParam(required = false) String sort,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "24") int size) {
+        String categoryName = null;
+        if (category != null && !category.isBlank()) {
+            Optional<Category> cat = categoryRepository.findBySlug(category.trim());
+            if (cat.isEmpty()) {
+                return ResponseEntity.notFound().build();
+            }
+            categoryName = cat.get().getName();
+        }
+        return ResponseEntity.ok(productService.search(q, category, inStock, sort, page, size)
+                .withCategoryName(categoryName));
     }
 
     @GetMapping("/products/{id}")

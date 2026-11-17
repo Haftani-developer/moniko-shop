@@ -35,8 +35,22 @@ export const authApi = {
     api.post('/auth/reset-password', { token, newPassword }),
 };
 
+export interface ProductSearchParams {
+  q?: string;
+  category?: string;
+  sort?: string;
+  inStock?: boolean;
+  /** شماره‌ی صفحه از ۰ */
+  page?: number;
+  size?: number;
+}
+
 export const productApi = {
+  /** همه‌ی محصولات فعال بدون صفحه‌بندی؛ برای لیست‌های بزرگ از search استفاده کنید */
   getAll: () => api.get('/products'),
+  /** جستجو/لیست سمت سرور با صفحه‌بندی (PagedProducts) */
+  search: (p: ProductSearchParams) =>
+    api.get('/products/search', { params: { ...p, inStock: p.inStock ? true : undefined } }),
   getById: (id: number) => api.get(`/products/${id}`),
   getCategories: () => api.get('/categories'),
   /** درخت کامل دسته‌ها برای مگامنو */

@@ -1,107 +1,66 @@
-import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { productApi } from '../services/api';
-import { Category, Product } from '../types';
-import { compactFa, normalizeFa } from '../utils/format';
 import ProductCard from '../components/ProductCard';
+import Pager from '../components/Pager';
+import { useListingParams, useProductList } from '../utils/useProductList';
+import { SITE_NAME, useSeo } from '../utils/seo';
 
-/** امتیاز تطبیق یک محصول با عبارت جستجو؛ ۰ یعنی نامرتبط. */
-function score(p: Product, terms: string[], parentName: string): number {
-  const fields = {
-    name: p.name,
-    sub: [p.subtitle, p.brand].filter(Boolean).join(' '),
-    cat: [p.category?.name, parentName].filter(Boolean).join(' '),
-    other: [p.description, ...(p.specs || []).flatMap((s) => [s.key, s.value])].filter(Boolean).join(' '),
-  };
-  const norm = {
-    name: normalizeFa(fields.name), sub: normalizeFa(fields.sub),
-    cat: normalizeFa(fields.cat), other: normalizeFa(fields.other),
-  };
-  const compact = {
-    name: compactFa(fields.name), sub: compactFa(fields.sub),
-    cat: compactFa(fields.cat), other: compactFa(fields.other),
-  };
-  const weights = { name: 10, sub: 6, cat: 4, other: 1 } as const;
+const PAGE_SIZE = 24;
+const fa = (n: number) => new Intl.NumberFormat('fa-IR').format(n);
 
-  let total = 0;
-  for (const t of terms) {
-    const ct = t.replace(/\s/g, '');
-    let best = 0;
-    (Object.keys(weights) as (keyof typeof weights)[]).forEach((k) => {
-      if (norm[k].includes(t) || compact[k].includes(ct)) best = Math.max(best, weights[k]);
-    });
-    if (best === 0) return 0; // همه‌ی کلمات باید جایی پیدا شوند
-    total += best;
-  }
-  return total;
-}
-
+/** جستجو روی سرور (نام، برند، دسته و دسته‌ی والد، توضیحات، مشخصات) با صفحه‌بندی */
 export default function Search() {
-  const [params] = useSearchParams();
-  const q = (params.get('q') || '').trim();
-  const [products, setProducts] = useState<Product[]>([]);
-  const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(false);
-  const [attempt, setAttempt] = useState(0);
+  const [sp] = useSearchParams();
+  const q = (sp.get('q') || '').trim();
+  const { sort, inStock, page, update } = useListingParams();
 
-  useEffect(() => {
-    let cancelled = false;
-    setLoading(true);
-    setError(false);
-    Promise.all([
-      productApi.getAll(),
-      productApi.getCategoryTree().catch(() => ({ data: [] as Category[] })), // دسته‌ها اختیاری‌اند
-    ])
-      .then(([prods, cats]) => {
-        if (cancelled) return;
-        setProducts(Array.isArray(prods.data) ? prods.data : []);
-        setCategories(Array.isArray(cats.data) ? cats.data : []);
-      })
-      .catch((err) => {
-        console.error('خطا در دریافت محصولات برای جستجو:', err);
-        if (!cancelled) { setProducts([]); setError(true); }
-      })
-      .finally(() => { if (!cancelled) setLoading(false); });
-    return () => { cancelled = true; };
-  }, [attempt]);
+  const { data, loading, error, retry } = useProductList({
+    q, sort: sort || undefined, inStock, page, size: PAGE_SIZE,
+  });
 
-  const parentNames = useMemo(() => {
-    const map = new Map<number, string>();
-    categories.forEach((c) => map.set(c.id, c.name));
-    return map;
-  }, [categories]);
+  // صفحه‌ی نتایج جستجو محتوای تکراری است؛ ایندکس نشود
+  useSeo({ title: q ? `جستجوی «${q}» | ${SITE_NAME}` : `همه‌ی محصولات | ${SITE_NAME}`, noindex: true });
 
-  const results = useMemo(() => {
-    const terms = normalizeFa(q).split(' ').filter(Boolean);
-    if (terms.length === 0) return products;
-    return products
-      .map((p) => ({ p, s: score(p, terms, p.category?.parentId ? parentNames.get(p.category.parentId) || '' : '') }))
-      .filter((x) => x.s > 0)
-      .sort((a, b) => b.s - a.s || b.p.id - a.p.id)
-      .map((x) => x.p);
-  }, [products, q, parentNames]);
-
-  if (loading) return <div className="loading">در حال بارگذاری...</div>;
+  if (loading && !data) return <div className="loading">در حال بارگذاری...</div>;
 
   if (error) {
     return (
       <div className="kh-container kh-section">
         <p className="kh-muted">دریافت اطلاعات از سرور با مشکل روبه‌رو شد. اتصال اینترنت را بررسی کنید و دوباره تلاش کنید.</p>
-        <button type="button" className="btn" onClick={() => setAttempt((n) => n + 1)}>تلاش دوباره</button>
+        <button type="button" className="btn" onClick={retry}>تلاش دوباره</button>
       </div>
     );
   }
 
+  const items = data?.items ?? [];
+  const total = data?.totalItems ?? 0;
+
   return (
     <div className="kh-container kh-section">
-      <h2 className="kh-title">{q ? `نتایج جستجو برای «${q}»` : 'همه‌ی محصولات'}</h2>
-      {q && results.length > 0 && <p className="kh-muted">{new Intl.NumberFormat('fa-IR').format(results.length)} کالا پیدا شد</p>}
-      {results.length === 0 ? (
+      <div className="kh-listing-bar">
+        <h2 className="kh-title">{q ? `نتایج جستجو برای «${q}»` : 'همه‌ی محصولات'}</h2>
+        <div className="kh-listing-tools">
+          <label className="kh-check">
+            <input type="checkbox" checked={inStock} onChange={(e) => update({ inStock: e.target.checked ? '1' : null })} /> فقط کالاهای موجود
+          </label>
+          <select value={sort} onChange={(e) => update({ sort: e.target.value })} aria-label="مرتب‌سازی">
+            <option value="">{q ? 'مرتبط‌ترین' : 'جدیدترین'}</option>
+            {q && <option value="new">جدیدترین</option>}
+            <option value="discount">بیشترین تخفیف</option>
+            <option value="cheap">ارزان‌ترین</option>
+            <option value="expensive">گران‌ترین</option>
+          </select>
+        </div>
+      </div>
+      {total > 0 && <p className="kh-muted">{fa(total)} کالا پیدا شد</p>}
+      {items.length === 0 ? (
         <p className="kh-muted">محصولی با این مشخصات پیدا نشد. عبارت دیگری را امتحان کنید یا املای کلمات را بررسی کنید.</p>
       ) : (
-        <div className="kh-grid">{results.map((p) => <ProductCard key={p.id} product={p} />)}</div>
+        <div className={`kh-grid${loading ? ' kh-listing-busy' : ''}`}>
+          {items.map((p) => <ProductCard key={p.id} product={p} />)}
+        </div>
       )}
+      <Pager page={page} totalPages={data?.totalPages ?? 0}
+             onChange={(p) => { update({ page: String(p + 1) }); window.scrollTo({ top: 0, behavior: 'smooth' }); }} />
     </div>
   );
 }

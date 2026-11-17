@@ -2,6 +2,7 @@ package com.monikoshop.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.monikoshop.dto.PagedProducts;
 import com.monikoshop.dto.ProductForm;
 import com.monikoshop.dto.ProductResponse;
 import com.monikoshop.dto.ProductSpecDto;
@@ -13,6 +14,8 @@ import com.monikoshop.exception.ApiException;
 import com.monikoshop.repository.CategoryRepository;
 import com.monikoshop.repository.ProductImageRepository;
 import com.monikoshop.repository.ProductRepository;
+import com.monikoshop.repository.ProductSearchRepository;
+import com.monikoshop.search.SearchTextNormalizer;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -38,6 +41,7 @@ public class ProductService {
     private final ProductRepository productRepository;
     private final CategoryRepository categoryRepository;
     private final ProductImageRepository imageRepository;
+    private final ProductSearchRepository searchRepository;
     private final ObjectMapper objectMapper;
 
     // ------------------------------------------------------------------ reads
@@ -99,6 +103,75 @@ public class ProductService {
     private static String imageUrl(Long productId, Long imageId) {
         // relative path; the frontend prepends the backend address (VITE_API_URL)
         return "/api/products/" + productId + "/images/" + imageId;
+    }
+
+    // ----------------------------------------------------------------- search
+
+    public static final int DEFAULT_PAGE_SIZE = 24;
+    public static final int MAX_PAGE_SIZE = 60;
+    private static final int MAX_QUERY_CHARS = 100;
+    private static final int MAX_QUERY_TERMS = 8;
+    private static final Set<String> SORTS = Set.of("relevance", "new", "cheap", "expensive", "discount");
+
+    /**
+     * جستجو و صفحه‌بندی سمت سرور.
+     *
+     * @param q            عبارت جستجو (اختیاری)؛ همه‌ی کلمات باید در نام/برند/دسته/توضیحات/مشخصات باشند
+     * @param categorySlug فقط محصولات این دسته و زیردسته‌هایش (اختیاری)
+     * @param sort         relevance | new | cheap | expensive | discount
+     * @param page         شماره‌ی صفحه از ۰
+     */
+    @Transactional(readOnly = true)
+    public PagedProducts search(String q, String categorySlug, boolean inStockOnly, String sort, int page, int size) {
+        String query = q == null ? "" : (q.length() > MAX_QUERY_CHARS ? q.substring(0, MAX_QUERY_CHARS) : q);
+        List<String> terms = SearchTextNormalizer.terms(query, MAX_QUERY_TERMS);
+        int safeSize = size < 1 ? DEFAULT_PAGE_SIZE : Math.min(size, MAX_PAGE_SIZE);
+        int safePage = Math.max(0, Math.min(page, 100_000));
+        String slug = (categorySlug == null || categorySlug.isBlank()) ? null : categorySlug.trim();
+        String effectiveSort = (sort != null && SORTS.contains(sort)) ? sort : (terms.isEmpty() ? "new" : "relevance");
+
+        ProductSearchRepository.Result r = searchRepository.search(terms, slug, inStockOnly, effectiveSort, safePage, safeSize);
+
+        List<ProductResponse> items = List.of();
+        if (!r.ids().isEmpty()) {
+            Map<Long, Product> byId = new HashMap<>();
+            for (Product p : productRepository.findAllById(r.ids())) {
+                byId.put(p.getId(), p);
+            }
+            List<Product> ordered = new ArrayList<>(r.ids().size());
+            for (Long id : r.ids()) {
+                Product p = byId.get(id);
+                if (p != null) {
+                    ordered.add(p);
+                }
+            }
+            items = toResponses(ordered);
+        }
+        int totalPages = (int) ((r.total() + safeSize - 1) / safeSize);
+        return new PagedProducts(items, safePage, safeSize, r.total(), totalPages, null);
+    }
+
+    /** متن ایندکس جستجوی یک محصول (نام، برند، دسته و دسته‌ی والد، توضیحات، مشخصات). */
+    private String buildSearchText(Product p) {
+        Category c = p.getCategory();
+        String parentName = (c != null && c.getParent() != null) ? c.getParent().getName() : null;
+        List<String> specTexts = new ArrayList<>();
+        for (ProductSpec s : p.getSpecs()) {
+            specTexts.add(s.getKey() + " " + s.getValue());
+        }
+        return SearchTextNormalizer.buildIndexText(p.getName(), p.getSubtitle(), p.getBrand(),
+                c == null ? null : c.getName(), parentName, p.getDescription(), specTexts);
+    }
+
+    /** ایندکس همه‌ی محصولات را بازسازی می‌کند (بعد از تغییر نام/والد دسته‌ها و در شروع برای محصولات قدیمی). */
+    @Transactional
+    public int reindexAllSearchText() {
+        List<Product> all = productRepository.findAll();
+        for (Product p : all) {
+            p.setSearchText(buildSearchText(p));
+        }
+        productRepository.saveAll(all);
+        return all.size();
     }
 
     // ----------------------------------------------------------------- writes
@@ -298,6 +371,8 @@ public class ProductService {
         List<ProductSpec> specs = parseSpecs(f.specsJson());
         product.getSpecs().clear();
         product.getSpecs().addAll(specs);
+
+        product.setSearchText(buildSearchText(product));
     }
 
     private List<ProductSpec> parseSpecs(String json) {

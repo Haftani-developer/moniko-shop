@@ -11,6 +11,7 @@ import BannerRow from '../components/BannerRow';
 import ProductCard from '../components/ProductCard';
 import Countdown from '../components/Countdown';
 import SmartLink from '../components/SmartLink';
+import { DEFAULT_DESCRIPTION, DEFAULT_TITLE, SITE_NAME, SITE_URL, useSeo } from '../utils/seo';
 
 /** شناسه‌ی یک دسته و همه‌ی زیرمجموعه‌هایش */
 const collectIds = (c: Category): number[] => [c.id, ...(c.children || []).flatMap(collectIds)];
@@ -49,6 +50,19 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
   const [dealOver, setDealOver] = useState(false);
 
+  useSeo({
+    title: DEFAULT_TITLE,
+    description: DEFAULT_DESCRIPTION,
+    path: '/',
+    jsonLd: {
+      '@context': 'https://schema.org',
+      '@type': 'WebSite',
+      name: SITE_NAME,
+      url: SITE_URL + '/',
+      potentialAction: { '@type': 'SearchAction', target: `${SITE_URL}/search?q={search_term_string}`, 'query-input': 'required name=search_term_string' },
+    },
+  });
+
   const aboutTitle = useSetting('about_title', 'خرید لوازم آرایشی و بهداشتی از فروشگاه اینترنتی مونیکو');
   const aboutText = useSetting(
     'about_text',
@@ -59,11 +73,35 @@ export default function Home() {
   const [aboutClipped, setAboutClipped] = useState(false);
   const aboutRef = useRef<HTMLParagraphElement>(null);
 
+  // به‌جای دانلود کل کاتالوگ، فقط چند لیست کوچک از سرور گرفته می‌شود (جدیدترین، پرتخفیف، موجود، هر دسته)
   useEffect(() => {
-    Promise.all([productApi.getCategoryTree(), productApi.getAll()])
-      .then(([catRes, prodRes]) => { setCategories(catRes.data); setProducts(prodRes.data); })
-      .catch((error) => console.error('Failed to load home data:', error))
-      .finally(() => setLoading(false));
+    let cancelled = false;
+    const items = (r: PromiseSettledResult<{ data: { items?: Product[] } }>) =>
+      r.status === 'fulfilled' ? (r.value.data.items ?? []) : [];
+    (async () => {
+      try {
+        const [catRes, ...lists] = await Promise.allSettled([
+          productApi.getCategoryTree(),
+          productApi.search({ sort: 'new', size: 20 }),
+          productApi.search({ sort: 'discount', size: 20 }),
+          productApi.search({ sort: 'new', inStock: true, size: 20 }),
+        ]);
+        const cats: Category[] = catRes.status === 'fulfilled' ? catRes.value.data : [];
+        const perCategory = await Promise.allSettled(
+          cats.slice(0, 6).map((c) => productApi.search({ category: c.slug, sort: 'new', size: 12 }))
+        );
+        if (cancelled) return;
+        const byId = new Map<number, Product>();
+        [...lists, ...perCategory].forEach((r) => items(r as PromiseSettledResult<{ data: { items?: Product[] } }>).forEach((p) => byId.set(p.id, p)));
+        setCategories(cats);
+        setProducts([...byId.values()]);
+      } catch (error) {
+        console.error('Failed to load home data:', error);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
   }, []);
 
   // لینک‌هایی مثل /#deals بعد از بارگذاری اسکرول شوند

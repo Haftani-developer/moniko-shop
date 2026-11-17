@@ -6,6 +6,7 @@ import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
 import { getProductImageUrl } from '../utils/imageUrl';
 import ProductGallery from '../components/ProductGallery';
+import { SITE_NAME, SITE_URL, buildProductJsonLd, productDescription, useSeo } from '../utils/seo';
 
 const formatPrice = (price: number) => new Intl.NumberFormat('fa-IR').format(price) + ' تومان';
 const toFa = (n: number) => new Intl.NumberFormat('fa-IR').format(n);
@@ -39,6 +40,19 @@ export default function ProductDetail() {
       })
       .finally(() => setLoading(false));
   }, [id]);
+
+  const absImage = (u?: string | null) => {
+    const r = getProductImageUrl(u);
+    return r ? new URL(r, SITE_URL).toString() : '';
+  };
+  useSeo(product ? {
+    title: `${product.name}${product.category ? ' | ' + product.category.name : ''} | ${SITE_NAME}`,
+    description: productDescription(product),
+    image: absImage(product.imageUrl) || undefined,
+    path: `/products/${product.id}`,
+    type: 'product',
+    jsonLd: buildProductJsonLd(product, absImage),
+  } : { noindex: notFound });
 
   if (loading) return <div className="loading">در حال بارگذاری...</div>;
 

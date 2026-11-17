@@ -154,6 +154,8 @@ public class AdminController {
         }
         category = applyToCategory(category, request, id);
         Category saved = categoryRepository.save(category);
+        // نام/والد دسته در متن جستجوی محصولات هم هست؛ ایندکس دوباره ساخته شود
+        productService.reindexAllSearchText();
         return ResponseEntity.ok(CategoryTreeResponse.flat(saved));
     }
 

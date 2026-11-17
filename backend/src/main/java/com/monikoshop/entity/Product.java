@@ -67,6 +67,11 @@ public class Product {
     @Builder.Default
     private boolean active = true;
 
+    /** متن نرمال‌شده‌ی قابل جستجو؛ توسط ProductService ساخته می‌شود (ستون search_text). */
+    @Column(name = "search_text", columnDefinition = "TEXT")
+    @com.fasterxml.jackson.annotation.JsonIgnore
+    private String searchText;
+
     @CreationTimestamp
     @Column(updatable = false)
     private LocalDateTime createdAt;

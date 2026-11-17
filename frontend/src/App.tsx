@@ -29,9 +29,11 @@ import AdminBrands from './pages/admin/AdminBrands';
 import AdminHomeProducts from './pages/admin/AdminHomeProducts';
 import AdminSettings from './pages/admin/AdminSettings';
 import { useVisitTracker } from './utils/visitTracker';
+import { usePrivateRouteNoindex } from './utils/seo';
 
 export default function App() {
     useVisitTracker();
+    usePrivateRouteNoindex();
     return (
         <>
             <Header />

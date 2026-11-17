@@ -3,6 +3,43 @@
   "installCommand": "npm install --include=dev",
   "rewrites": [
     {
+      "source": "/sitemap.xml",
+      "destination": "https://api.moniko.ir/api/sitemap.xml"
+    },
+    {
+      "source": "/",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Googlebot|bingbot|Bingbot|BingPreview|YandexBot|Baiduspider|DuckDuckBot|Applebot|TelegramBot|WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|Embedly).*"
+        }
+      ],
+      "destination": "https://api.moniko.ir/api/seo/home"
+    },
+    {
+      "source": "/products/:id(\\d+)",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Googlebot|bingbot|Bingbot|BingPreview|YandexBot|Baiduspider|DuckDuckBot|Applebot|TelegramBot|WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|Embedly).*"
+        }
+      ],
+      "destination": "https://api.moniko.ir/api/seo/products/:id"
+    },
+    {
+      "source": "/categories/:slug",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": ".*(Googlebot|bingbot|Bingbot|BingPreview|YandexBot|Baiduspider|DuckDuckBot|Applebot|TelegramBot|WhatsApp|facebookexternalhit|Twitterbot|LinkedInBot|Slackbot|Discordbot|Embedly).*"
+        }
+      ],
+      "destination": "https://api.moniko.ir/api/seo/categories/:slug"
+    },
+    {
       "source": "/(.*)",
       "destination": "/index.html"
     }

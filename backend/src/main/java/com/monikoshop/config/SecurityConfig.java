@@ -65,6 +65,7 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/track/heartbeat").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/products/**", "/api/categories/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/home", "/api/banners/*/image", "/api/brands/*/logo").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/seo/**", "/api/sitemap.xml").permitAll()
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
