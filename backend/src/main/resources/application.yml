@@ -31,14 +31,33 @@ spring:
     password: ${SPRING_DATASOURCE_PASSWORD:}
     driver-class-name: org.postgresql.Driver
 
+  # مهاجرت‌های دیتابیس: src/main/resources/db/migration (V1, V2, ...).
+  # روی دیتابیس موجود (که قبلاً با ddl-auto ساخته شده) یک بار baseline روی نسخه‌ی ۱ زده می‌شود.
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    baseline-version: "1"
+    locations: classpath:db/migration
+
   jpa:
     hibernate:
-      ddl-auto: update
+      # فعلاً update (ایمن برای سوییچ تدریجی). بعد از چند دیپلوی موفق با Flyway
+      # می‌توانید JPA_DDL_AUTO=validate بگذارید تا اختلاف entity و شما خطا بدهد.
+      ddl-auto: ${JPA_DDL_AUTO:update}
     show-sql: false
     properties:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.PostgreSQLDialect
+
+app:
+  site-name: ${SITE_NAME:مونیکو}
+  site-description: ${SITE_DESCRIPTION:فروشگاه اینترنتی لوازم آرایشی و بهداشتی؛ خرید آنلاین با ضمانت اصالت کالا و ارسال سریع}
+  # آدرس عمومی فرانت‌اند و API (برای sitemap، canonical و تصاویر در صفحات سئو)
+  site-url: ${SITE_URL:${APP_BASE_URL:https://moniko.ir}}
+  api-url: ${API_PUBLIC_URL:https://api.moniko.ir}
+  # قیمت‌ها در دیتابیس «تومان» است؛ ISO 4217 فقط IRR (ریال) دارد، پس ×۱۰
+  price-to-rial: ${PRICE_TO_RIAL:10}
 
 tracking:
   # مرز «روز» برای آمار بازدید
