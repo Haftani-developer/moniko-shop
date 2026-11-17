@@ -52,3 +52,6 @@ cd backend
 - `POST /api/auth/register` - ثبت‌نام
 - `POST /api/auth/login` - ورود
 - `GET /api/auth/me` - اطلاعات کاربر فعلی (نیاز به توکن)
+
+---
+> تغییرات اخیر (جستجوی سمت سرور، Flyway، بکاپ، سئو، تست و CI) و نکات استقرار: [IMPROVEMENTS.md](IMPROVEMENTS.md)
