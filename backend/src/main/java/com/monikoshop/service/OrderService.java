@@ -72,7 +72,7 @@ public class OrderService {
                 throw new ApiException("موجودی کافی برای \"" + product.getName() + "\" وجود ندارد");
             }
 
-            BigDecimal unitPrice = product.getDiscountPrice() != null ? product.getDiscountPrice() : product.getPrice();
+            BigDecimal unitPrice = effectiveUnitPrice(product);
             BigDecimal subtotal = unitPrice.multiply(BigDecimal.valueOf(quantity));
 
             OrderItem orderItem = OrderItem.builder()
@@ -125,9 +125,45 @@ public class OrderService {
     public OrderResponse updateStatus(Long orderId, OrderStatus status) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ApiException("سفارش یافت نشد"));
+        OrderStatus previous = order.getStatus();
+        if (previous == OrderStatus.CANCELLED && status != OrderStatus.CANCELLED) {
+            // موجودی این سفارش قبلاً به انبار برگشته؛ فعال‌کردن دوباره باعث ناهماهنگی انبار می‌شود
+            throw new ApiException("سفارش لغوشده را نمی‌توان دوباره فعال کرد؛ یک سفارش جدید ثبت کنید");
+        }
+        if (previous != OrderStatus.CANCELLED && status == OrderStatus.CANCELLED) {
+            restoreStock(order);
+        }
         order.setStatus(status);
         order = orderRepository.save(order);
         return toResponse(order, true);
+    }
+
+    /**
+     * قیمت واحد در لحظه‌ی خرید: قیمت با تخفیف فقط وقتی معتبر است که مثبت و کمتر از قیمت اصلی باشد
+     * (تخفیف ۰ یا بیشتر از قیمت اصلی نباید باعث فروش رایگان یا گران‌تر شود).
+     */
+    static BigDecimal effectiveUnitPrice(Product product) {
+        BigDecimal discount = product.getDiscountPrice();
+        if (discount != null && discount.signum() > 0 && discount.compareTo(product.getPrice()) < 0) {
+            return discount;
+        }
+        return product.getPrice();
+    }
+
+    /** با لغو سفارش، تعداد هر قلم به موجودی محصول برمی‌گردد (قفل محصولات به ترتیب id برای جلوگیری از deadlock). */
+    private void restoreStock(Order order) {
+        Map<Long, Integer> quantities = new TreeMap<>();
+        for (OrderItem item : order.getItems()) {
+            if (item.getProduct() != null) {
+                quantities.merge(item.getProduct().getId(), item.getQuantity(), Integer::sum);
+            }
+        }
+        for (Map.Entry<Long, Integer> entry : quantities.entrySet()) {
+            productRepository.findByIdForUpdate(entry.getKey()).ifPresent(product -> {
+                product.setStock(product.getStock() + entry.getValue());
+                productRepository.save(product);
+            });
+        }
     }
 
     private OrderResponse toResponse(Order order, boolean includeCustomer) {
